@@ -1,0 +1,22 @@
+version: "1"
+project:
+    id: ""
+packages:
+    # name of Go package the will be generated
+    - name: db
+      # the generated file will be stored in db/sqlc directory
+      path: "./db/sqlc"
+      # tell sqlc where to look for SQL query files
+      queries: "./db/query/"
+      # database schema or migration files
+      schema: "./db/migration/"
+      # database engine to use, support postgresql and mysql
+      engine: "postgresql"
+      # add json tags to generated structs
+      emit_json_tags: true
+      # TODO what is it
+      emit_prepared_queries: false
+      # tell sqlc to generate Querier interface for generated package
+      emit_interface: false
+      # false will generate structs in singular form, e.g. Account struct will be generated for accounts table, not Accounts struct
+      emit_exact_table_names: false
