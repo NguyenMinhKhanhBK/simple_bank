@@ -2,8 +2,10 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,6 +16,11 @@ func TestTransferTx(t *testing.T) {
 	acc1 := createRandomAccount(t)
 	acc2 := createRandomAccount(t)
 
+	logrus.WithFields(logrus.Fields{
+		"acc1.Balance": acc1.Balance,
+		"acc2.Balance": acc2.Balance,
+	}).Info("Before transaction")
+
 	n := 5
 	amount := int64(10)
 
@@ -21,8 +28,10 @@ func TestTransferTx(t *testing.T) {
 	resultsCh := make(chan TransferTxResult)
 
 	for i := 0; i < n; i++ {
+		txName := fmt.Sprintf("TX %d", i)
 		go func() {
-			result, err := store.TransferTx(context.Background(), TransferTxParams{
+			ctx := context.WithValue(context.Background(), txKey, txName)
+			result, err := store.TransferTx(ctx, TransferTxParams{
 				FromAccountID: acc1.ID,
 				ToAccountID:   acc2.ID,
 				Amount:        amount,
@@ -33,6 +42,7 @@ func TestTransferTx(t *testing.T) {
 		}()
 	}
 
+	existed := make(map[int]bool)
 	// check results
 	for i := 0; i < n; i++ {
 		err := <-errsCh
@@ -74,6 +84,99 @@ func TestTransferTx(t *testing.T) {
 
 		_, err = store.GetEntry(context.Background(), toEntry.ID)
 		assert.NoError(t, err)
+
+		// check accounts
+		fromAccount := result.FromAccount
+		assert.NotEmpty(t, fromAccount)
+		assert.Equal(t, acc1.ID, fromAccount.ID)
+
+		toAccount := result.ToAccount
+		assert.NotEmpty(t, toAccount)
+		assert.Equal(t, acc2.ID, toAccount.ID)
+
+		// check balances
+		logrus.WithFields(logrus.Fields{
+			"fromAccount.Balance": fromAccount.Balance,
+			"toAccount.Balance":   toAccount.Balance,
+		}).Info("Transaction")
+
+		diff1 := acc1.Balance - fromAccount.Balance
+		diff2 := toAccount.Balance - acc2.Balance
+		assert.Equal(t, diff1, diff2)
+		assert.True(t, diff1 > 0)
+		assert.True(t, diff1%amount == 0)
+
+		k := int(diff1 / amount)
+		assert.True(t, k >= 1 && k <= n)
+
+		assert.NotContains(t, existed, k)
+		existed[k] = true
 	}
 
+	// check the final updated balance
+	updatedAcc1, err := store.GetAccount(context.Background(), acc1.ID)
+	assert.NoError(t, err)
+
+	updatedAcc2, err := store.GetAccount(context.Background(), acc2.ID)
+	assert.NoError(t, err)
+
+	logrus.WithFields(logrus.Fields{
+		"updatedAcc1.Balance": updatedAcc1.Balance,
+		"updatedAcc2.Balance": updatedAcc2.Balance,
+	}).Info("After transaction")
+
+	assert.Equal(t, acc1.Balance-int64(n)*amount, updatedAcc1.Balance)
+	assert.Equal(t, acc2.Balance+int64(n)*amount, updatedAcc2.Balance)
+
+}
+
+func TestTransferTxDeadlock(t *testing.T) {
+	store := NewStore(testDB)
+
+	acc1 := createRandomAccount(t)
+	acc2 := createRandomAccount(t)
+
+	logrus.WithFields(logrus.Fields{
+		"acc1.Balance": acc1.Balance,
+		"acc2.Balance": acc2.Balance,
+	}).Info("Before transaction")
+
+	n := 10
+	amount := int64(10)
+	errs := make(chan error)
+
+	for i := 0; i < n; i++ {
+		fromAccID := acc1.ID
+		toAccID := acc2.ID
+
+		if i%2 == 1 {
+			fromAccID = acc2.ID
+			toAccID = acc1.ID
+		}
+
+		go func() {
+			_, err := store.TransferTx(context.Background(), TransferTxParams{
+				FromAccountID: fromAccID,
+				ToAccountID:   toAccID,
+				Amount:        amount,
+			})
+
+			errs <- err
+		}()
+	}
+
+	for i := 0; i < n; i++ {
+		err := <-errs
+		assert.NoError(t, err)
+	}
+
+	// check the final updated balance
+	updatedAcc1, err := store.GetAccount(context.Background(), acc1.ID)
+	assert.NoError(t, err)
+
+	updatedAcc2, err := store.GetAccount(context.Background(), acc2.ID)
+	assert.NoError(t, err)
+
+	assert.Equal(t, acc1.Balance, updatedAcc1.Balance)
+	assert.Equal(t, acc2.Balance, updatedAcc2.Balance)
 }
