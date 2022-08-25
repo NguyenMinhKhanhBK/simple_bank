@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/NguyenMinhKhanhBK/simple_bank/util"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
@@ -12,14 +13,13 @@ import (
 var testQueries *Queries
 var testDB *sql.DB
 
-const (
-	dbDirver = "postgres"
-	dbSource = "postgresql://root:root@localhost:5432/simple_bank?sslmode=disable"
-)
-
 func TestMain(m *testing.M) {
-	var err error
-	testDB, err = sql.Open(dbDirver, dbSource)
+	config, err := util.LoadConfig("../..")
+	if err != nil {
+		logrus.Fatal("cannot load config:", err)
+	}
+
+	testDB, err = sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		logrus.Fatal("cannot connect to db:", err)
 	}
