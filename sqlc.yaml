@@ -20,3 +20,5 @@ packages:
       emit_interface: false
       # false will generate structs in singular form, e.g. Account struct will be generated for accounts table, not Accounts struct
       emit_exact_table_names: false
+      # return empty slice instead of null
+      emit_empty_slices: true

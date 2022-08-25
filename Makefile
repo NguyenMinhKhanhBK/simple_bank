@@ -23,4 +23,7 @@ sqlc:
 test:
 	go test -v -cover -coverprofile=coverage.out ./...
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test
+server:
+	go build main.go
+
+.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server
