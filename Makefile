@@ -25,5 +25,8 @@ test:
 
 server:
 	go build main.go
+	
+mock:
+	go generate -v ./...
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server
+.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server mock

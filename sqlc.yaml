@@ -17,7 +17,7 @@ packages:
       # TODO what is it
       emit_prepared_queries: false
       # tell sqlc to generate Querier interface for generated package
-      emit_interface: false
+      emit_interface: true
       # false will generate structs in singular form, e.g. Account struct will be generated for accounts table, not Accounts struct
       emit_exact_table_names: false
       # return empty slice instead of null

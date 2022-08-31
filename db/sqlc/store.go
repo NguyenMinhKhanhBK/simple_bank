@@ -8,25 +8,31 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+//go:generate mockgen -package=$GOPACKAG -destination=mock/mock_$GOFILE github.com/NguyenMinhKhanhBK/simple_bank/db/sqlc Store
+type Store interface {
+	Querier
+	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+}
+
 var txKey = struct{}{}
 
-type Store struct {
+type SQLStore struct {
 	*Queries
 	db *sql.DB
 }
 
-func NewStore(dbObj *sql.DB) *Store {
+func NewStore(dbObj *sql.DB) Store {
 	if dbObj == nil {
 		return nil
 	}
 
-	return &Store{
+	return &SQLStore{
 		db:      dbObj,
 		Queries: New(dbObj),
 	}
 }
 
-func (s *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+func (s *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -59,7 +65,7 @@ type TransferTxResult struct {
 	ToEntry     Entry    `json:"to_entry"`
 }
 
-func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
+func (s *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 	var result TransferTxResult
 
 	err := s.execTx(ctx, func(q *Queries) error {
