@@ -29,4 +29,10 @@ server:
 mock:
 	go generate -v ./...
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server mock
+migrate-up1:
+	migrate -path db/migration -database "postgresql://root:root@localhost:5432/simple_bank?sslmode=disable" -verbose up 1
+
+migrate-down1:
+	migrate -path db/migration -database "postgresql://root:root@localhost:5432/simple_bank?sslmode=disable" -verbose down 1
+
+.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server mock migrate-up1 migrate-down1
