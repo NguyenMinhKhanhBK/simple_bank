@@ -131,7 +131,7 @@ func TestCreateUser(t *testing.T) {
 			store := mock_sqlc.NewMockStore(ctrl)
 			test.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 			recorder := httptest.NewRecorder()
 
 			data, err := json.Marshal(test.body)
