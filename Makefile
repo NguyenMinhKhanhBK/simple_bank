@@ -24,7 +24,7 @@ test:
 	go test -v -cover -coverprofile=coverage.out ./...
 
 server:
-	go build main.go
+	go build -o main main.go
 	
 mock:
 	go generate -v ./...
