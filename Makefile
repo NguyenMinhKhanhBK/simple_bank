@@ -46,8 +46,14 @@ db_schema:
 
 proto:
 	rm -rf pb/*.go
-	protoc --proto_path=proto --go_out=pb --go_opt=paths=source_relative \
-    --go-grpc_out=pb --go-grpc_opt=paths=source_relative \
+	rm -rf doc/swagger/*.swagger.json
+	protoc --proto_path=proto --go_out=pb --go_opt paths=source_relative \
+    --go-grpc_out=pb --go-grpc_opt paths=source_relative \
+	--grpc-gateway_out=pb --grpc-gateway_opt logtostderr=true --grpc-gateway_opt paths=source_relative \
+	--openapiv2_out=doc/swagger --openapiv2_opt allow_merge=true --openapiv2_opt merge_file_name=simple_bank \
     proto/*.proto
 
-.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server mock migrate-up1 migrate-down1 db_docs db_schema proto
+evans:
+	evans --host localhost --port 9090 -r repl
+
+.PHONY: postgres createdb dropdb migrate-up migrate-down sqlc test server mock migrate-up1 migrate-down1 db_docs db_schema proto evans
