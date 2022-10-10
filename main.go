@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"database/sql"
+	"embed"
+	"io/fs"
 	"net"
 	"net/http"
 	"sync"
+
+	_ "embed"
 
 	"github.com/NguyenMinhKhanhBK/simple_bank/api"
 	db "github.com/NguyenMinhKhanhBK/simple_bank/db/sqlc"
@@ -19,6 +23,10 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/encoding/protojson"
 )
+
+//go:embed doc/swagger
+var docFS embed.FS
+var swaggerFS, _ = fs.Sub(docFS, "doc/swagger")
 
 func main() {
 	config, err := util.LoadConfig(".")
@@ -110,8 +118,8 @@ func runGatewayServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
 	mux := http.NewServeMux()
 	mux.Handle("/", grpcMux)
 
-	fs := http.FileServer(http.Dir("./doc/swagger"))
-	mux.Handle("/swagger/", http.StripPrefix("/swagger/", fs))
+	fsHandler := http.StripPrefix("/swagger/", http.FileServer(http.FS(swaggerFS)))
+	mux.Handle("/swagger/", fsHandler)
 
 	listener, err := net.Listen("tcp", config.HTTPServerAddress)
 	if err != nil {
