@@ -11,6 +11,10 @@ import (
 
 	_ "embed"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/NguyenMinhKhanhBK/simple_bank/api"
 	db "github.com/NguyenMinhKhanhBK/simple_bank/db/sqlc"
 	"github.com/NguyenMinhKhanhBK/simple_bank/gapi"
@@ -43,6 +47,8 @@ func main() {
 		logrus.Fatal("cannot ping db:", err)
 	}
 
+	runDBMigration(config.MigrationURL, config.DBSource)
+
 	store := db.NewStore(conn)
 
 	wg := &sync.WaitGroup{}
@@ -52,6 +58,19 @@ func main() {
 	wg.Wait()
 
 	logrus.Info("Exiting ...")
+}
+
+func runDBMigration(migrationURL string, dbSource string) {
+	migration, err := migrate.New(migrationURL, dbSource)
+	if err != nil {
+		logrus.Fatal("cannot create new migrate instance:", err)
+	}
+
+	if err := migration.Up(); err != nil && err != migrate.ErrNoChange {
+		logrus.Fatal("failed to run migrate up:", err)
+	}
+
+	logrus.Info("DB migrate succesfully")
 }
 
 func runGinServer(config util.Config, store db.Store) {
