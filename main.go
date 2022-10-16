@@ -93,7 +93,8 @@ func runGRPCServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
 		logrus.Fatal("cannot create server:", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	gRPCLogger := grpc.UnaryInterceptor(gapi.GRPCLogger)
+	grpcServer := grpc.NewServer(gRPCLogger)
 	pb.RegisterSimpleBankServer(grpcServer, server)
 	reflection.Register(grpcServer)
 
