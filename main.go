@@ -148,7 +148,8 @@ func runGatewayServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
 
 	logrus.Infof("start HTTP gateway server at %v", config.HTTPServerAddress)
 
-	err = http.Serve(listener, mux)
+	handler := gapi.HTTPLogger(mux)
+	err = http.Serve(listener, handler)
 	if err != nil {
 		logrus.Fatal("cannot start gRPC server:", err)
 	}
