@@ -7,6 +7,7 @@ import (
 	"github.com/NguyenMinhKhanhBK/simple_bank/pb"
 	"github.com/NguyenMinhKhanhBK/simple_bank/token"
 	"github.com/NguyenMinhKhanhBK/simple_bank/util"
+	"github.com/NguyenMinhKhanhBK/simple_bank/worker"
 )
 
 type Server struct {
@@ -14,15 +15,21 @@ type Server struct {
 	tokenMaker token.Maker
 	config     util.Config
 	pb.UnimplementedSimpleBankServer
+	taskDistributor worker.TaskDistributor
 }
 
-func NewServer(config util.Config, store db.Store) (*Server, error) {
+func NewServer(config util.Config, store db.Store, taskDistributor worker.TaskDistributor) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
 	}
 
-	server := &Server{store: store, tokenMaker: tokenMaker, config: config}
+	server := &Server{
+		store:           store,
+		tokenMaker:      tokenMaker,
+		config:          config,
+		taskDistributor: taskDistributor,
+	}
 
 	return server, nil
 }

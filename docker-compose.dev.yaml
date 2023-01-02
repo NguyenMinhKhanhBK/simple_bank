@@ -16,6 +16,8 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
     ports: 
       - 8080:8080
       - 9090:9090
@@ -25,7 +27,8 @@ services:
     depends_on:
       - postgres
       - redis
-    entrypoint: [ "/app/wait-for.sh", "postgres:5432", "--", "/app/start.sh" ]
-    command: [ "/app/main" ]
+    entrypoint: sleep infinity
+        #entrypoint: [ "/app/wait-for.sh", "postgres:5432", "--", "/app/start.sh" ]
+        #command: [ "/app/main" ]
 
   

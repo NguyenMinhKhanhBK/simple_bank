@@ -14,12 +14,14 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/hibiken/asynq"
 
 	"github.com/NguyenMinhKhanhBK/simple_bank/api"
 	db "github.com/NguyenMinhKhanhBK/simple_bank/db/sqlc"
 	"github.com/NguyenMinhKhanhBK/simple_bank/gapi"
 	"github.com/NguyenMinhKhanhBK/simple_bank/pb"
 	"github.com/NguyenMinhKhanhBK/simple_bank/util"
+	"github.com/NguyenMinhKhanhBK/simple_bank/worker"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
@@ -51,10 +53,17 @@ func main() {
 
 	store := db.NewStore(conn)
 
+	redisOpt := asynq.RedisClientOpt{
+		Addr: config.RedisAddress,
+	}
+
+	taskDistributor := worker.NewRedisTaskDistributor(redisOpt)
+
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	go runGRPCServer(wg, config, store)
-	go runGatewayServer(wg, config, store)
+	wg.Add(3)
+	go runGRPCServer(wg, config, store, taskDistributor)
+	go runGatewayServer(wg, config, store, taskDistributor)
+	go runTaskProcessor(wg, redisOpt, store)
 	wg.Wait()
 
 	logrus.Info("Exiting ...")
@@ -85,10 +94,10 @@ func runGinServer(config util.Config, store db.Store) {
 	}
 }
 
-func runGRPCServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
+func runGRPCServer(wg *sync.WaitGroup, config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
 	defer wg.Done()
 
-	server, err := gapi.NewServer(config, store)
+	server, err := gapi.NewServer(config, store, taskDistributor)
 	if err != nil {
 		logrus.Fatal("cannot create server:", err)
 	}
@@ -111,10 +120,10 @@ func runGRPCServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
 	}
 }
 
-func runGatewayServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
+func runGatewayServer(wg *sync.WaitGroup, config util.Config, store db.Store, taskDistributor worker.TaskDistributor) {
 	defer wg.Done()
 
-	server, err := gapi.NewServer(config, store)
+	server, err := gapi.NewServer(config, store, taskDistributor)
 	if err != nil {
 		logrus.Fatal("cannot create server:", err)
 	}
@@ -152,5 +161,15 @@ func runGatewayServer(wg *sync.WaitGroup, config util.Config, store db.Store) {
 	err = http.Serve(listener, handler)
 	if err != nil {
 		logrus.Fatal("cannot start gRPC server:", err)
+	}
+}
+
+func runTaskProcessor(wg *sync.WaitGroup, redisOpt asynq.RedisClientOpt, store db.Store) {
+	defer wg.Done()
+
+	taskProcessor := worker.NewRedisTaskProcessor(redisOpt, store)
+	logrus.Info("start task processor")
+	if err := taskProcessor.Start(); err != nil {
+		logrus.WithError(err).Fatal("failed to start task processor")
 	}
 }
