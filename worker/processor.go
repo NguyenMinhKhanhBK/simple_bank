@@ -44,7 +44,8 @@ func NewRedisTaskProcessor(redisOpt asynq.RedisClientOpt, store db.Store) TaskPr
 func (rp *RedisTaskProcessor) ProcessTaskSendVerifyEmail(ctx context.Context, task *asynq.Task) error {
 	var payload PayloadSendVerifyEmail
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
-		return fmt.Errorf("failed to unmarshal payload with error %w, stop retry: %w", err, asynq.SkipRetry)
+		logrus.WithError(err).Error("failed to unmarshal payload")
+		return fmt.Errorf("failed to unmarshal payload with error, stop retry: %w", asynq.SkipRetry)
 	}
 
 	user, err := rp.store.GetUser(ctx, payload.Username)

@@ -56,7 +56,7 @@ func (s *Server) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb
 	}
 	err = s.taskDistributor.DistributeTaskSendVerifyEmail(ctx, taskPayload, opts...)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to distribute task to send verify email: %w", err)
+		return nil, status.Errorf(codes.Internal, "failed to distribute task to send verify email: %v", err)
 	}
 
 	return &pb.CreateUserResponse{
